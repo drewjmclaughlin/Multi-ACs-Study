@@ -1,0 +1,157 @@
+---
+title: "Coping with Adversity: Logistics Mixed Effects Models"
+date: "February 12, 2018"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r}
+# Load packages
+library(lme4)
+require(lme4)
+
+# Load data for linear analysis (centered and scaled already)
+MDS_data <- read.table("/Users/drewjmclaughlin/Desktop/Multi-ACs-Study-Data.txt",
+                       header=TRUE)
+```
+
+```{r}
+# Full logistics mixed model with interactions
+MDSInt.lmer <- glmer(CorrectIncorrect ~ Condition*PPVTScale + Condition*RhythmScale + 
+                     Condition*StroopScale + Condition*WARRMScale + (1|Subject), 
+                   data=MDS_data, family="binomial")
+```
+#
+Stroop's interaction with Condition does not significantly improve model fit:  
+
+```{r}
+# Remove Stroop*Condition interaction and compare models with ANOVA
+MDSIntNoStroopCond.lmer <- glmer(CorrectIncorrect ~ Condition*PPVTScale + 
+                                   Condition*RhythmScale + StroopScale + 
+                                   Condition*WARRMScale + (1|Subject), data=MDS_data, 
+                                 family="binomial")
+anova(MDSIntNoStroopCond.lmer, MDSInt.lmer)
+```
+#
+Stroop does not significantly improve model fit (Stroop is excluded from this point on):  
+
+```{r}
+# Remove Stroop entirely and compare models with ANOVA
+MDSIntNoStroop.lmer <- glmer(CorrectIncorrect ~ Condition*PPVTScale + Condition*RhythmScale 
+                             + Condition*WARRMScale + (1|Subject), data=MDS_data, 
+                           family="binomial")
+anova(MDSIntNoStroopCond.lmer, MDSIntNoStroop.lmer)
+```
+#
+PPVT's interaction with Condition does not significantly improve model fit:  
+
+```{r}
+# Remove PPVT*Condition interaction and compare models with ANOVA
+MDSIntNoPPVTCond.lmer <- glmer(CorrectIncorrect ~ PPVTScale + Condition*RhythmScale +
+                               Condition*WARRMScale + (1|Subject), data=MDS_data, 
+                             family="binomial")
+anova(MDSIntNoStroop.lmer, MDSIntNoPPVTCond.lmer)
+```
+#
+PPVT **does** significantly improve model fit:  
+
+```{r}
+# Remove PPVT entirely and compare with ANOVA
+MDSIntNoPPVT.lmer <- glmer(CorrectIncorrect ~ Condition*RhythmScale + Condition*WARRMScale +
+                           (1|Subject), data=MDS_data, family="binomial")
+anova(MDSIntNoPPVT.lmer, MDSIntNoPPVTCond.lmer)
+```
+#
+Rhythm's interaction with Condition **does** significantly improve model fit:  
+
+```{r}
+# Remove Rhythm*Condition interaction and compare models with ANOVA
+MDSIntNoRhythmCond.lmer <- glmer(CorrectIncorrect ~ Condition*PPVTScale + RhythmScale + 
+                                   Condition*WARRMScale + (1|Subject), data=MDS_data, 
+                                 family="binomial")
+anova(MDSIntNoStroop.lmer, MDSIntNoRhythmCond.lmer)
+```
+#
+Rhythm does not significantly improve model fit:  
+
+```{r}
+# Remove Rhythm entirely and compare models with ANOVA
+MDSIntNoRhythm.lmer <- glmer(CorrectIncorrect ~ Condition*PPVTScale + Condition*WARRMScale +
+                               (1|Subject), data=MDS_data, family="binomial")
+anova(MDSIntNoRhythm.lmer, MDSIntNoRhythmCond.lmer)
+```
+#
+WARRM's interaction with Condition **does** significantly improve model fit:  
+
+```{r}
+# Remove WARRM*Condition interaction and compare models with ANOVA
+MDSIntNoWARRMCond.lmer <- glmer(CorrectIncorrect ~ Condition*PPVTScale + 
+                                  Condition*RhythmScale + WARRMScale + (1|Subject), 
+                                data=MDS_data, family="binomial")
+anova(MDSIntNoStroop.lmer, MDSIntNoWARRMCond.lmer)
+```
+#
+WARRM **does** significantly improve model fit:  
+
+```{r}
+# Remove WARRM entirely and compare models with ANOVA
+MDSIntNoWARRM.lmer <- glmer(CorrectIncorrect ~ Condition*PPVTScale + Condition*RhythmScale +
+                              (1|Subject), data=MDS_data, family="binomial")
+anova(MDSIntNoWARRM.lmer, MDSIntNoWARRMCond.lmer)
+```
+#
+### Model of best fit (NE intercept)
+
+```{r}
+MDS.lmerBestFit <- glmer(CorrectIncorrect ~ PPVTScale + RhythmScale*Condition + 
+                           WARRMScale*Condition + WARRMScale + (1|Subject), 
+                         data=MDS_data, family="binomial")
+summary(MDS.lmerBestFit)
+anova(MDS.lmerBestFit)
+```
+#
+### Model of best fit (NI intercept)
+
+```{r}
+# Add new column to data frame that uses dummy coding
+library(dplyr)
+MDS_data$Cond.dummy <- recode_factor(MDS_data$Condition, "NaInfo" = "NaInfo", "NNEner" = 
+                                       "NNEner","NaEner" = "NaEner", "NNQuiet" = "NNQuiet")
+
+# Rerun model using new column
+MDS.lmerBestFit <- glmer(CorrectIncorrect ~ PPVTScale + RhythmScale*Cond.dummy + 
+                           WARRMScale*Cond.dummy + WARRMScale + (1|Subject), 
+                         data=MDS_data, family="binomial")
+summary(MDS.lmerBestFit)
+```
+#
+### Model of best fit (NNQ intercept)
+
+```{r}
+# Add new column to data frame that uses dummy coding
+library(dplyr)
+MDS_data$Cond.dummy <- recode_factor(MDS_data$Condition, "NNQuiet" = "NNQuiet", "NaInfo" = 
+                                       "NaInfo", "NNEner" = "NNEner", "NaEner" = "NaEner")
+
+# Rerun model using new column
+MDS.lmerBestFit <- glmer(CorrectIncorrect ~ PPVTScale + RhythmScale*Cond.dummy + 
+                           WARRMScale*Cond.dummy + WARRMScale + (1|Subject), 
+                         data=MDS_data, family="binomial")
+summary(MDS.lmerBestFit)
+```
+#
+### Model of best fit (NNE intercept)
+
+```{r}
+# Add new column to data frame that uses dummy coding
+library(dplyr)
+MDS_data$Cond.dummy <- recode_factor(MDS_data$Condition, "NNEner" = "NNEner", "NNQuiet" = 
+                                       "NNQuiet", "NaInfo" = "NaInfo", "NaEner" = "NaEner")
+
+# Rerun model using new column
+MDS.lmerBestFit <- glmer(CorrectIncorrect ~ PPVTScale + RhythmScale*Cond.dummy + 
+                           WARRMScale*Cond.dummy + WARRMScale + (1|Subject), 
+                         data=MDS_data, family="binomial")
+summary(MDS.lmerBestFit)
+```
